@@ -1,0 +1,23 @@
+{
+  "name": "nodenberg-api-test-client",
+  "version": "1.0.0",
+  "description": "GUI Test Client for Nodenberg API Server",
+  "main": "index.js",
+  "scripts": {
+    "start": "http-server public -p 8080 -c-1",
+    "dev": "http-server public -p 8080 -c-1"
+  },
+  "keywords": [
+    "nodenberg",
+    "test",
+    "client",
+    "api",
+    "excel",
+    "pdf"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}

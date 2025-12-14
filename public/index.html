@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nodenberg API Test Client</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚀 Nodenberg API Test Client</h1>
+      <p class="subtitle">Excel Template Engine - Pure Express Server</p>
+      <div class="header-actions">
+        <button id="settings-btn" class="settings-btn" title="Settings">⚙️</button>
+      </div>
+      <div id="health-status" class="health-status">
+        <span id="health-indicator">⏳</span>
+        <span id="health-text">Checking server status...</span>
+      </div>
+    </header>
+
+    <!-- Section 1: Template Upload -->
+    <section class="card">
+      <h2>📁 Step 1: Upload Template</h2>
+      <div class="upload-area">
+        <input type="file" id="templateFile" accept=".xlsx" />
+        <label for="templateFile" class="file-label">
+          <span class="file-icon">📄</span>
+          <span class="file-text">Choose Excel Template (.xlsx)</span>
+        </label>
+        <div id="file-info" class="file-info"></div>
+      </div>
+    </section>
+
+    <!-- Section 2: Placeholder Detection -->
+    <section class="card">
+      <h2>🔍 Step 2: Detect Placeholders</h2>
+      <div class="button-group">
+        <button id="detectPlaceholders" class="btn btn-primary" disabled>
+          Detect Placeholders (Simple)
+        </button>
+        <button id="detectPlaceholdersDetailed" class="btn btn-secondary" disabled>
+          Detect Placeholders (Detailed)
+        </button>
+        <button id="getTemplateInfo" class="btn btn-secondary" disabled>
+          Get Template Info
+        </button>
+      </div>
+      <div id="placeholders-result" class="result-box"></div>
+    </section>
+
+    <!-- Section 3: Data Input -->
+    <section class="card">
+      <h2>✏️ Step 3: Input Data</h2>
+      <p class="hint">Enter JSON data to replace placeholders. Click "Detect Placeholders" first to see available fields.</p>
+      <textarea id="dataInput" class="data-input" rows="10" placeholder='{"会社名": "テスト株式会社", "日付": "2025/12/13", "金額": "¥1,234,567", "担当者": "山田太郎"}'></textarea>
+      <button id="useSampleData" class="btn btn-small">Use Sample Data</button>
+    </section>
+
+    <!-- Section 4: Generate Files -->
+    <section class="card">
+      <h2>⚡ Step 4: Generate Files</h2>
+      <div class="button-group">
+        <button id="generateExcel" class="btn btn-success" disabled>
+          📊 Generate Excel
+        </button>
+        <button id="generatePDF" class="btn btn-success" disabled>
+          📄 Generate PDF
+        </button>
+      </div>
+      <div id="generation-result" class="result-box"></div>
+    </section>
+
+    <!-- Error Display -->
+    <div id="error-display" class="error-box" style="display: none;"></div>
+
+    <!-- Footer -->
+    <footer>
+      <p>Nodenberg API Server - Pure Express Implementation</p>
+      <p class="version">API Base URL: <code id="api-base-url">http://localhost:3000</code></p>
+    </footer>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>⚙️ Settings</h2>
+        <button id="modal-close" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="api-url-input">API Base URL</label>
+          <input type="text" id="api-url-input" class="form-input" placeholder="http://localhost:3000">
+          <p class="hint">Enter the base URL of the Nodenberg API Server (without trailing slash)</p>
+        </div>
+        <div class="form-group">
+          <label for="api-key-input">API Key (optional)</label>
+          <input type="password" id="api-key-input" class="form-input" placeholder="Leave empty if not required">
+          <p class="hint">If the server requires authentication, enter your API key here</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="reset-url-btn" class="btn btn-secondary">Reset to Default</button>
+        <button id="save-url-btn" class="btn btn-primary">Save & Reload</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
