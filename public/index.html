@@ -46,6 +46,9 @@
         <button id="getTemplateInfo" class="btn btn-secondary" disabled>
           Get Template Info
         </button>
+        <button id="getTemplateSheets" class="btn btn-secondary" disabled>
+          Get Sheet List
+        </button>
       </div>
       <div id="placeholders-result" class="result-box"></div>
     </section>
@@ -61,6 +64,21 @@
     <!-- Section 4: Generate Files -->
     <section class="card">
       <h2>⚡ Step 4: Generate Files</h2>
+      <div class="sheet-selector">
+        <div class="sheet-selector-header">
+          <label class="sheet-selector-label">Sheet (optional)</label>
+          <span class="sheet-selector-note">If both are set, only that sheet is generated.</span>
+        </div>
+        <div class="sheet-selector-controls">
+          <select id="sheetSelectBy" class="form-input sheet-selector-by">
+            <option value="none" selected>(All sheets)</option>
+            <option value="name">By sheet name</option>
+            <option value="id">By sheet id</option>
+          </select>
+          <input id="sheetSelectValue" class="form-input sheet-selector-value" type="text" placeholder="(disabled)" disabled>
+        </div>
+        <p class="hint">Default (when not fully specified): generate all sheets, same as before.</p>
+      </div>
       <div class="button-group">
         <button id="generateExcel" class="btn btn-success" disabled>
           📊 Generate Excel
@@ -68,7 +86,14 @@
         <button id="generatePDF" class="btn btn-success" disabled>
           📄 Generate PDF
         </button>
+        <button id="generateExcelByDisplayOrder" class="btn btn-secondary" disabled>
+          📊 Excel (DisplayOrder)
+        </button>
+        <button id="generatePDFByDisplayOrder" class="btn btn-secondary" disabled>
+          📄 PDF (DisplayOrder)
+        </button>
       </div>
+      <p class="hint">DisplayOrder buttons use numeric value from "Sheet" input (1-based display order).</p>
       <div id="generation-result" class="result-box"></div>
     </section>
 

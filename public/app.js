@@ -20,11 +20,16 @@ const elements = {
   detectPlaceholders: document.getElementById('detectPlaceholders'),
   detectPlaceholdersDetailed: document.getElementById('detectPlaceholdersDetailed'),
   getTemplateInfo: document.getElementById('getTemplateInfo'),
+  getTemplateSheets: document.getElementById('getTemplateSheets'),
   placeholdersResult: document.getElementById('placeholders-result'),
   dataInput: document.getElementById('dataInput'),
   useSampleData: document.getElementById('useSampleData'),
   generateExcel: document.getElementById('generateExcel'),
   generatePDF: document.getElementById('generatePDF'),
+  generateExcelByDisplayOrder: document.getElementById('generateExcelByDisplayOrder'),
+  generatePDFByDisplayOrder: document.getElementById('generatePDFByDisplayOrder'),
+  sheetSelectBy: document.getElementById('sheetSelectBy'),
+  sheetSelectValue: document.getElementById('sheetSelectValue'),
   generationResult: document.getElementById('generation-result'),
   errorDisplay: document.getElementById('error-display'),
   healthStatus: document.getElementById('health-status'),
@@ -55,9 +60,14 @@ function setupEventListeners() {
   elements.detectPlaceholders.addEventListener('click', () => detectPlaceholders(false));
   elements.detectPlaceholdersDetailed.addEventListener('click', () => detectPlaceholders(true));
   elements.getTemplateInfo.addEventListener('click', getTemplateInfo);
+  elements.getTemplateSheets.addEventListener('click', getTemplateSheets);
   elements.useSampleData.addEventListener('click', useSampleData);
   elements.generateExcel.addEventListener('click', generateExcel);
   elements.generatePDF.addEventListener('click', generatePDF);
+  elements.generateExcelByDisplayOrder.addEventListener('click', generateExcelByDisplayOrder);
+  elements.generatePDFByDisplayOrder.addEventListener('click', generatePDFByDisplayOrder);
+  elements.sheetSelectBy.addEventListener('change', handleSheetSelectorChange);
+  elements.sheetSelectValue.addEventListener('input', () => hideError());
 
   // Settings modal
   elements.settingsBtn.addEventListener('click', openSettings);
@@ -71,6 +81,26 @@ function setupEventListeners() {
       closeSettings();
     }
   });
+}
+
+function handleSheetSelectorChange() {
+  const by = elements.sheetSelectBy.value;
+  if (by === 'none') {
+    elements.sheetSelectValue.value = '';
+    elements.sheetSelectValue.disabled = true;
+    elements.sheetSelectValue.type = 'text';
+    elements.sheetSelectValue.placeholder = '(disabled)';
+    return;
+  }
+
+  elements.sheetSelectValue.disabled = false;
+  if (by === 'id') {
+    elements.sheetSelectValue.type = 'number';
+    elements.sheetSelectValue.placeholder = 'e.g. 1';
+  } else {
+    elements.sheetSelectValue.type = 'text';
+    elements.sheetSelectValue.placeholder = 'e.g. 参照シート';
+  }
 }
 
 // Settings Modal Functions
@@ -124,6 +154,29 @@ function getHeaders() {
   return headers;
 }
 
+function getSheetSelectorPayload() {
+  const by = elements.sheetSelectBy.value;
+  const rawValue = elements.sheetSelectValue.value;
+
+  // Only effective when both are set
+  // NOTE: name selector must preserve leading/trailing spaces for exact sheet-name match
+  if (by === 'none' || rawValue.trim() === '') return {};
+
+  if (by === 'id') {
+    const id = Number(rawValue.trim());
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new Error('Sheet ID must be an integer (>= 1)');
+    }
+    return { sheetSelectBy: 'id', sheetSelectValue: id };
+  }
+
+  if (by === 'name') {
+    return { sheetSelectBy: 'name', sheetSelectValue: rawValue };
+  }
+
+  return {};
+}
+
 // Health Check
 async function checkHealth() {
   try {
@@ -163,6 +216,7 @@ async function handleFileUpload(event) {
     elements.detectPlaceholders.disabled = false;
     elements.detectPlaceholdersDetailed.disabled = false;
     elements.getTemplateInfo.disabled = false;
+    elements.getTemplateSheets.disabled = false;
 
     hideError();
   } catch (error) {
@@ -222,6 +276,8 @@ async function detectPlaceholders(detailed = false) {
     if (detectedPlaceholders.length > 0) {
       elements.generateExcel.disabled = false;
       elements.generatePDF.disabled = false;
+      elements.generateExcelByDisplayOrder.disabled = false;
+      elements.generatePDFByDisplayOrder.disabled = false;
 
       // Auto-generate sample data
       generateSampleData();
@@ -268,6 +324,41 @@ async function getTemplateInfo() {
   }
 }
 
+// Get Template Sheets
+async function getTemplateSheets() {
+  if (!templateBase64) {
+    showError('Please upload a template file first');
+    return;
+  }
+
+  try {
+    showLoading(elements.placeholdersResult);
+
+    const response = await fetch(`${API_BASE_URL}/template/sheets`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ templateBase64 }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to get template sheets');
+    }
+
+    // Display results
+    elements.placeholdersResult.innerHTML = `
+      <div class="success-message">✅ Sheet list retrieved (${data.sheetCount || 0} sheets)</div>
+      <pre>${JSON.stringify(data, null, 2)}</pre>
+    `;
+    elements.placeholdersResult.classList.add('active');
+
+    hideError();
+  } catch (error) {
+    showError('Failed to get template sheets: ' + error.message);
+  }
+}
+
 // Generate Sample Data
 function generateSampleData() {
   const sampleData = {};
@@ -287,6 +378,15 @@ function useSampleData() {
   generateSampleData();
 }
 
+function getDisplayOrderPayload() {
+  const rawValue = elements.sheetSelectValue.value.trim();
+  const displayOrder = Number(rawValue);
+  if (!Number.isInteger(displayOrder) || displayOrder <= 0) {
+    throw new Error('DisplayOrder must be an integer (>= 1). Enter a number in the Sheet input.');
+  }
+  return { displayOrder };
+}
+
 // Generate Excel
 async function generateExcel() {
   if (!templateBase64) {
@@ -302,6 +402,7 @@ async function generateExcel() {
 
   try {
     const data = JSON.parse(dataText);
+    const sheetSelector = getSheetSelectorPayload();
 
     showLoading(elements.generationResult);
 
@@ -311,6 +412,7 @@ async function generateExcel() {
       body: JSON.stringify({
         templateBase64,
         data,
+        ...sheetSelector,
       }),
     });
 
@@ -356,6 +458,7 @@ async function generatePDF() {
 
   try {
     const data = JSON.parse(dataText);
+    const sheetSelector = getSheetSelectorPayload();
 
     showLoading(elements.generationResult);
 
@@ -365,6 +468,7 @@ async function generatePDF() {
       body: JSON.stringify({
         templateBase64,
         data,
+        ...sheetSelector,
       }),
     });
 
@@ -391,6 +495,116 @@ async function generatePDF() {
       showError('Invalid JSON format in data input');
     } else {
       showError('PDF generation failed: ' + error.message);
+    }
+  }
+}
+
+// Generate Excel by displayOrder
+async function generateExcelByDisplayOrder() {
+  if (!templateBase64) {
+    showError('Please upload a template file first');
+    return;
+  }
+
+  const dataText = elements.dataInput.value.trim();
+  if (!dataText) {
+    showError('Please enter data in JSON format');
+    return;
+  }
+
+  try {
+    const data = JSON.parse(dataText);
+    const payload = getDisplayOrderPayload();
+
+    showLoading(elements.generationResult);
+
+    const response = await fetch(`${API_BASE_URL}/generate/excel/by-display-order`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        templateBase64,
+        data,
+        ...payload,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || result.details || 'Failed to generate Excel by displayOrder');
+    }
+
+    const filename = `generated-display-order-${Date.now()}.xlsx`;
+    elements.generationResult.innerHTML = `
+      <div class="success-message">✅ Excel file generated by displayOrder!</div>
+      <p>File size: ${(Buffer.from(result.data, 'base64').length / 1024).toFixed(2)} KB</p>
+      <a href="#" class="download-link" onclick="downloadFile('${result.data}', '${filename}', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); return false;">
+        📥 Download Excel File
+      </a>
+    `;
+    elements.generationResult.classList.add('active');
+
+    hideError();
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      showError('Invalid JSON format in data input');
+    } else {
+      showError('Excel generation by displayOrder failed: ' + error.message);
+    }
+  }
+}
+
+// Generate PDF by displayOrder
+async function generatePDFByDisplayOrder() {
+  if (!templateBase64) {
+    showError('Please upload a template file first');
+    return;
+  }
+
+  const dataText = elements.dataInput.value.trim();
+  if (!dataText) {
+    showError('Please enter data in JSON format');
+    return;
+  }
+
+  try {
+    const data = JSON.parse(dataText);
+    const payload = getDisplayOrderPayload();
+
+    showLoading(elements.generationResult);
+
+    const response = await fetch(`${API_BASE_URL}/generate/pdf/by-display-order`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        templateBase64,
+        data,
+        ...payload,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || result.details || 'Failed to generate PDF by displayOrder');
+    }
+
+    const filename = `generated-display-order-${Date.now()}.pdf`;
+    elements.generationResult.innerHTML = `
+      <div class="success-message">✅ PDF file generated by displayOrder!</div>
+      <p>File size: ${(Buffer.from(result.data, 'base64').length / 1024).toFixed(2)} KB</p>
+      <a href="#" class="download-link" onclick="downloadFile('${result.data}', '${filename}', 'application/pdf'); return false;">
+        📥 Download PDF File
+      </a>
+    `;
+    elements.generationResult.classList.add('active');
+
+    hideError();
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      showError('Invalid JSON format in data input');
+    } else {
+      showError('PDF generation by displayOrder failed: ' + error.message);
     }
   }
 }

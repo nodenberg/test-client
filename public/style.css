@@ -417,6 +417,48 @@ input[type="file"] {
   border-color: #667eea;
 }
 
+.sheet-selector {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.sheet-selector-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.sheet-selector-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.sheet-selector-note {
+  font-size: 0.85em;
+  color: #666;
+}
+
+.sheet-selector-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sheet-selector-by {
+  flex: 1;
+  min-width: 220px;
+}
+
+.sheet-selector-value {
+  flex: 2;
+  min-width: 260px;
+}
+
 .modal-footer {
   padding: 20px 30px;
   border-top: 1px solid #e0e0e0;
@@ -516,6 +558,17 @@ footer p {
   }
 
   .modal-footer .btn {
+    width: 100%;
+  }
+
+  .sheet-selector-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sheet-selector-by,
+  .sheet-selector-value {
+    min-width: auto;
     width: 100%;
   }
 }

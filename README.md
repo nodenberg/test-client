@@ -8,6 +8,7 @@ GUI Test Client for Nodenberg API Server - A standalone web application for test
 - 🔍 **Placeholder Detection** - Detect and preview placeholders in templates
 - 📊 **Excel Generation** - Generate Excel files with placeholder replacement
 - 📄 **PDF Generation** - Generate PDF files (requires LibreOffice on server)
+- 🧾 **Sheet Selection (Optional)** - Generate only one sheet by name or id
 - ⚙️ **API URL Configuration** - Configure API base URL via settings modal
 - 💾 **LocalStorage Persistence** - API URL saved across sessions
 
