@@ -21,6 +21,7 @@ const elements = {
   detectPlaceholdersDetailed: document.getElementById('detectPlaceholdersDetailed'),
   getTemplateInfo: document.getElementById('getTemplateInfo'),
   getTemplateSheets: document.getElementById('getTemplateSheets'),
+  validateTemplate: document.getElementById('validateTemplate'),
   placeholdersResult: document.getElementById('placeholders-result'),
   dataInput: document.getElementById('dataInput'),
   useSampleData: document.getElementById('useSampleData'),
@@ -56,11 +57,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Event Listeners
 function setupEventListeners() {
+  // Allow selecting the same file repeatedly by clearing current value before picker opens.
+  elements.templateFile.addEventListener('click', () => {
+    elements.templateFile.value = '';
+  });
   elements.templateFile.addEventListener('change', handleFileUpload);
   elements.detectPlaceholders.addEventListener('click', () => detectPlaceholders(false));
   elements.detectPlaceholdersDetailed.addEventListener('click', () => detectPlaceholders(true));
   elements.getTemplateInfo.addEventListener('click', getTemplateInfo);
   elements.getTemplateSheets.addEventListener('click', getTemplateSheets);
+  elements.validateTemplate.addEventListener('click', validateTemplate);
   elements.useSampleData.addEventListener('click', useSampleData);
   elements.generateExcel.addEventListener('click', generateExcel);
   elements.generatePDF.addEventListener('click', generatePDF);
@@ -217,6 +223,13 @@ async function handleFileUpload(event) {
     elements.detectPlaceholdersDetailed.disabled = false;
     elements.getTemplateInfo.disabled = false;
     elements.getTemplateSheets.disabled = false;
+    elements.validateTemplate.disabled = false;
+
+    // Enable generation buttons immediately after template upload
+    elements.generateExcel.disabled = false;
+    elements.generatePDF.disabled = false;
+    elements.generateExcelByDisplayOrder.disabled = false;
+    elements.generatePDFByDisplayOrder.disabled = false;
 
     hideError();
   } catch (error) {
@@ -359,13 +372,52 @@ async function getTemplateSheets() {
   }
 }
 
+// Validate Template
+async function validateTemplate() {
+  if (!templateBase64) {
+    showError('Please upload a template file first');
+    return;
+  }
+
+  try {
+    showLoading(elements.placeholdersResult);
+
+    const fileName = elements.templateFile.files && elements.templateFile.files[0]
+      ? elements.templateFile.files[0].name.replace(/\.xlsx$/i, '')
+      : 'template';
+
+    const response = await fetch(`${API_BASE_URL}/template/validate`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        templateId: `${fileName}-${Date.now()}`,
+        templateName: fileName,
+        base64Data: templateBase64,
+        generateJsonTemplate: true,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to validate template');
+    }
+
+    elements.placeholdersResult.innerHTML = `
+      <div class="success-message">✅ Template validated</div>
+      <pre>${JSON.stringify(data, null, 2)}</pre>
+    `;
+    elements.placeholdersResult.classList.add('active');
+
+    hideError();
+  } catch (error) {
+    showError('Template validation failed: ' + error.message);
+  }
+}
+
 // Generate Sample Data
 function generateSampleData() {
-  const sampleData = {};
-  detectedPlaceholders.forEach(placeholder => {
-    sampleData[placeholder] = `Sample ${placeholder}`;
-  });
-
+  const sampleData = buildSampleDataFromDetectedPlaceholders(detectedPlaceholders);
   elements.dataInput.value = JSON.stringify(sampleData, null, 2);
 }
 
@@ -376,6 +428,97 @@ function useSampleData() {
     return;
   }
   generateSampleData();
+}
+
+function extractPlaceholderKeys(placeholders) {
+  if (!Array.isArray(placeholders)) return [];
+
+  return placeholders
+    .map((p) => {
+      if (typeof p === 'string') return p;
+      if (p && typeof p === 'object' && typeof p.key === 'string') return p.key;
+      return null;
+    })
+    .filter((k) => typeof k === 'string');
+}
+
+function sampleValueForField(fieldName) {
+  const lower = String(fieldName).toLowerCase();
+  if (lower.includes('番号') || lower.includes('no')) return 1;
+  if (lower.includes('数量') || lower.includes('qty') || lower.includes('count')) return 2;
+  if (lower.includes('単価') || lower.includes('price') || lower.includes('amount') || lower.includes('金額')) return 1000;
+  if (lower.includes('日付') || lower.includes('date')) return '2026/02/07';
+  return `Sample ${fieldName}`;
+}
+
+function buildSampleDataFromDetectedPlaceholders(placeholders) {
+  const keys = extractPlaceholderKeys(placeholders);
+  const sampleData = {};
+  const legacyArrays = new Map();   // arrayName => Set(fieldPath)
+  const sectionTables = new Map();  // section.table => { section, table, fields:Set(cellPath) }
+
+  keys.forEach((key) => {
+    // New syntax: ##section.table.cell
+    if (key.startsWith('##')) {
+      const parts = key.slice(2).split('.');
+      if (parts.length >= 3) {
+        const section = parts[0];
+        const table = parts[1];
+        const cellPath = parts.slice(2).join('.');
+        const tableKey = `${section}.${table}`;
+        if (!sectionTables.has(tableKey)) {
+          sectionTables.set(tableKey, { section, table, fields: new Set() });
+        }
+        sectionTables.get(tableKey).fields.add(cellPath);
+        return;
+      }
+    }
+
+    // Legacy array syntax: #array.field
+    if (key.startsWith('#')) {
+      const parts = key.slice(1).split('.');
+      if (parts.length >= 2) {
+        const arrayName = parts[0];
+        const fieldPath = parts.slice(1).join('.');
+        if (!legacyArrays.has(arrayName)) {
+          legacyArrays.set(arrayName, new Set());
+        }
+        legacyArrays.get(arrayName).add(fieldPath);
+        return;
+      }
+    }
+
+    // Primitive placeholder
+    sampleData[key] = sampleValueForField(key);
+  });
+
+  // Build legacy array sample: data[arrayName] = [{...}, {...}]
+  legacyArrays.forEach((fields, arrayName) => {
+    const row1 = {};
+    const row2 = {};
+    Array.from(fields).forEach((field, idx) => {
+      row1[field] = sampleValueForField(field);
+      row2[field] = sampleValueForField(`${field}_${idx + 2}`);
+    });
+    sampleData[arrayName] = [row1, row2];
+  });
+
+  // Build section-table sample: data[section][table] = [{...}, {...}]
+  sectionTables.forEach(({ section, table, fields }) => {
+    if (!sampleData[section] || typeof sampleData[section] !== 'object' || Array.isArray(sampleData[section])) {
+      sampleData[section] = {};
+    }
+
+    const row1 = {};
+    const row2 = {};
+    Array.from(fields).forEach((field, idx) => {
+      row1[field] = sampleValueForField(field);
+      row2[field] = sampleValueForField(`${field}_${idx + 2}`);
+    });
+    sampleData[section][table] = [row1, row2];
+  });
+
+  return sampleData;
 }
 
 function getDisplayOrderPayload() {

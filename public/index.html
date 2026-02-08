@@ -49,6 +49,9 @@
         <button id="getTemplateSheets" class="btn btn-secondary" disabled>
           Get Sheet List
         </button>
+        <button id="validateTemplate" class="btn btn-secondary" disabled>
+          Validate Template
+        </button>
       </div>
       <div id="placeholders-result" class="result-box"></div>
     </section>
@@ -56,8 +59,8 @@
     <!-- Section 3: Data Input -->
     <section class="card">
       <h2>✏️ Step 3: Input Data</h2>
-      <p class="hint">Enter JSON data to replace placeholders. Click "Detect Placeholders" first to see available fields.</p>
-      <textarea id="dataInput" class="data-input" rows="10" placeholder='{"会社名": "テスト株式会社", "日付": "2025/12/13", "金額": "¥1,234,567", "担当者": "山田太郎"}'></textarea>
+      <p class="hint">Enter JSON data to replace placeholders. Supports legacy `{{#明細.項目}}` and new `{{##請求.明細.項目}}` (nested `data.請求.明細[]`).</p>
+      <textarea id="dataInput" class="data-input" rows="10" placeholder='{"会社名":"テスト株式会社","請求":{"明細":[{"番号":1,"項目":"Webデザイン一式","数量":2,"単価":8000}]}}'></textarea>
       <button id="useSampleData" class="btn btn-small">Use Sample Data</button>
     </section>
 

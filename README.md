@@ -45,8 +45,8 @@ Click the **⚙️ Settings** button in the top-right corner to configure the AP
 ### 3. Use the Client
 
 1. **Upload Template** - Choose an Excel template file (.xlsx)
-2. **Detect Placeholders** - Click to find placeholders like `{{company_name}}`
-3. **Input Data** - Enter JSON data to replace placeholders
+2. **Detect/Validate Template** - Detect placeholders or validate template payload (`/template/validate`)
+3. **Input Data** - Enter JSON data to replace placeholders (legacy array and section-table both supported)
 4. **Generate Files** - Generate Excel or PDF files
 5. **Download** - Click the download link to save generated files
 
@@ -113,8 +113,15 @@ The test client communicates with the following Nodenberg API endpoints:
 | `/health` | GET | Server health check |
 | `/template/placeholders` | POST | Detect placeholders |
 | `/template/info` | POST | Get template metadata |
+| `/template/validate` | POST | Validate template payload |
 | `/generate/excel` | POST | Generate Excel file |
 | `/generate/pdf` | POST | Generate PDF file |
+
+### Placeholder data mapping examples
+
+- Primitive: `{{会社名}}` -> `"会社名": "テスト株式会社"`
+- Legacy array: `{{#明細.項目}}` -> `"明細": [{"項目":"A"}]`
+- Section-table: `{{##請求.明細.項目}}` -> `"請求": {"明細": [{"項目":"A"}]}`
 
 ## CORS Configuration
 
