@@ -4,7 +4,8 @@ GUI Test Client for Nodenberg API Server - A standalone web application for test
 
 ## Features
 
-- 📁 **File Upload** - Upload Excel templates (.xlsx)
+- 📁 **File Upload** - Upload or drag-and-drop Excel templates (.xlsx)
+- 🖼️ **Image Upload** - Upload or drag-and-drop PNG/JPEG files and send them as `images.{fileNameWithoutExt}` for `{{%imageKey}}` placeholders
 - 🔍 **Placeholder Detection** - Detect and preview placeholders in templates
 - 📊 **Excel Generation** - Generate Excel files with placeholder replacement
 - 📄 **PDF Generation** - Generate PDF files (requires LibreOffice on server)
@@ -44,11 +45,12 @@ Click the **⚙️ Settings** button in the top-right corner to configure the AP
 
 ### 3. Use the Client
 
-1. **Upload Template** - Choose an Excel template file (.xlsx)
+1. **Upload Template** - Choose or drag-and-drop an Excel template file (.xlsx)
 2. **Detect/Validate Template** - Detect placeholders or validate template payload (`/template/validate`)
 3. **Input Data** - Enter JSON data to replace placeholders (legacy array and section-table both supported)
-4. **Generate Files** - Generate Excel or PDF files
-5. **Download** - Click the download link to save generated files
+4. **Upload Images** - Optional. Choose or drag-and-drop images. `youtube.png` is sent as `images.youtube`
+5. **Generate Files** - Generate Excel or PDF files
+6. **Download** - Click the download link to save generated files
 
 ## Project Structure
 

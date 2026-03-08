@@ -12,11 +12,17 @@ let API_KEY = localStorage.getItem(API_KEY_STORAGE_KEY) || '';
 // State
 let templateBase64 = null;
 let detectedPlaceholders = [];
+let uploadedImages = {};
 
 // DOM Elements
 const elements = {
   templateFile: document.getElementById('templateFile'),
+  imageFiles: document.getElementById('imageFiles'),
+  templateUploadArea: document.getElementById('template-upload-area'),
+  imageUploadArea: document.getElementById('image-upload-area'),
   fileInfo: document.getElementById('file-info'),
+  imageInfo: document.getElementById('image-info'),
+  imageList: document.getElementById('image-list'),
   detectPlaceholders: document.getElementById('detectPlaceholders'),
   detectPlaceholdersDetailed: document.getElementById('detectPlaceholdersDetailed'),
   getTemplateInfo: document.getElementById('getTemplateInfo'),
@@ -61,7 +67,13 @@ function setupEventListeners() {
   elements.templateFile.addEventListener('click', () => {
     elements.templateFile.value = '';
   });
+  elements.imageFiles.addEventListener('click', () => {
+    elements.imageFiles.value = '';
+  });
   elements.templateFile.addEventListener('change', handleFileUpload);
+  elements.imageFiles.addEventListener('change', handleImageUpload);
+  setupDropZone(elements.templateUploadArea, handleTemplateDrop);
+  setupDropZone(elements.imageUploadArea, handleImageDrop);
   elements.detectPlaceholders.addEventListener('click', () => detectPlaceholders(false));
   elements.detectPlaceholdersDetailed.addEventListener('click', () => detectPlaceholders(true));
   elements.getTemplateInfo.addEventListener('click', getTemplateInfo);
@@ -87,6 +99,35 @@ function setupEventListeners() {
       closeSettings();
     }
   });
+}
+
+function setupDropZone(element, onDropFiles) {
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
+    element.addEventListener(eventName, preventDragDefaults);
+  });
+
+  ['dragenter', 'dragover'].forEach((eventName) => {
+    element.addEventListener(eventName, () => element.classList.add('drag-over'));
+  });
+
+  ['dragleave', 'drop'].forEach((eventName) => {
+    element.addEventListener(eventName, (event) => {
+      if (eventName === 'dragleave' && element.contains(event.relatedTarget)) {
+        return;
+      }
+      element.classList.remove('drag-over');
+    });
+  });
+
+  element.addEventListener('drop', (event) => {
+    const files = Array.from(event.dataTransfer?.files || []);
+    onDropFiles(files);
+  });
+}
+
+function preventDragDefaults(event) {
+  event.preventDefault();
+  event.stopPropagation();
 }
 
 function handleSheetSelectorChange() {
@@ -208,6 +249,25 @@ async function handleFileUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  await processTemplateFile(file);
+}
+
+async function handleTemplateDrop(files) {
+  const file = files.find((candidate) => /\.xlsx$/i.test(candidate.name));
+  if (!file) {
+    showError('Please drop a valid Excel template file (.xlsx)');
+    return;
+  }
+
+  await processTemplateFile(file);
+}
+
+async function processTemplateFile(file) {
+  if (!/\.xlsx$/i.test(file.name)) {
+    showError('Please upload a valid Excel template file (.xlsx)');
+    return;
+  }
+
   try {
     // Convert file to Base64
     templateBase64 = await fileToBase64(file);
@@ -237,6 +297,62 @@ async function handleFileUpload(event) {
   }
 }
 
+async function handleImageUpload(event) {
+  const files = Array.from(event.target.files || []);
+  if (files.length === 0) return;
+
+  await processImageFiles(files);
+}
+
+async function handleImageDrop(files) {
+  const imageFiles = files.filter((file) => isSupportedImageFile(file));
+  if (imageFiles.length === 0) {
+    showError('Please drop PNG or JPEG image files');
+    return;
+  }
+
+  await processImageFiles(imageFiles);
+}
+
+function isSupportedImageFile(file) {
+  return /\.(png|jpe?g)$/i.test(file.name) || ['image/png', 'image/jpeg'].includes(file.type);
+}
+
+async function processImageFiles(files) {
+  const invalidFile = files.find((file) => !isSupportedImageFile(file));
+  if (invalidFile) {
+    showError(`Unsupported image file: ${invalidFile.name}. Use PNG or JPEG.`);
+    return;
+  }
+
+  try {
+    const nextImages = {};
+
+    for (const file of files) {
+      const key = file.name.replace(/\.[^.]+$/, '');
+      if (!key) {
+        throw new Error(`Invalid image file name: ${file.name}`);
+      }
+
+      nextImages[key] = {
+        base64: await fileToBase64(file),
+        contentType: file.type || inferImageContentType(file.name),
+        originalName: file.name,
+        size: file.size,
+      };
+    }
+
+    uploadedImages = {
+      ...uploadedImages,
+      ...nextImages,
+    };
+    renderUploadedImages();
+    hideError();
+  } catch (error) {
+    showError('Failed to read image files: ' + error.message);
+  }
+}
+
 // Convert File to Base64
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -248,6 +364,70 @@ function fileToBase64(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+function inferImageContentType(fileName) {
+  const lower = String(fileName).toLowerCase();
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  return 'image/png';
+}
+
+function getImagesPayload() {
+  const entries = Object.entries(uploadedImages);
+  if (entries.length === 0) return undefined;
+
+  return Object.fromEntries(entries.map(([key, image]) => [key, {
+    base64: image.base64,
+    contentType: image.contentType,
+  }]));
+}
+
+function renderUploadedImages() {
+  const entries = Object.entries(uploadedImages);
+
+  if (entries.length === 0) {
+    elements.imageInfo.classList.remove('active');
+    elements.imageInfo.innerHTML = '';
+    elements.imageList.classList.remove('active');
+    elements.imageList.innerHTML = '';
+    return;
+  }
+
+  elements.imageInfo.innerHTML = `
+    <strong>✅ Images loaded:</strong> ${entries.length} file(s) ready for upload
+  `;
+  elements.imageInfo.classList.add('active');
+  elements.imageList.innerHTML = entries.map(([key, image]) => `
+    <div class="asset-item">
+      <div class="asset-item-main">
+        <div class="asset-item-name">${escapeHtml(image.originalName)}</div>
+        <div class="asset-item-meta">
+          key: <code>${escapeHtml(key)}</code> · type: ${escapeHtml(image.contentType)} · size: ${(image.size / 1024).toFixed(2)} KB
+        </div>
+      </div>
+      <div class="asset-item-badge">{{%${escapeHtml(key)}}}</div>
+    </div>
+  `).join('');
+  elements.imageList.classList.add('active');
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildGeneratePayload(data, extra = {}) {
+  const images = getImagesPayload();
+  return {
+    templateBase64,
+    data,
+    ...(images ? { images } : {}),
+    ...extra,
+  };
 }
 
 // Detect Placeholders
@@ -552,11 +732,7 @@ async function generateExcel() {
     const response = await fetch(`${API_BASE_URL}/generate/excel`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        templateBase64,
-        data,
-        ...sheetSelector,
-      }),
+      body: JSON.stringify(buildGeneratePayload(data, sheetSelector)),
     });
 
     const result = await response.json();
@@ -608,11 +784,7 @@ async function generatePDF() {
     const response = await fetch(`${API_BASE_URL}/generate/pdf`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        templateBase64,
-        data,
-        ...sheetSelector,
-      }),
+      body: JSON.stringify(buildGeneratePayload(data, sheetSelector)),
     });
 
     const result = await response.json();
@@ -664,11 +836,7 @@ async function generateExcelByDisplayOrder() {
     const response = await fetch(`${API_BASE_URL}/generate/excel/by-display-order`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        templateBase64,
-        data,
-        ...payload,
-      }),
+      body: JSON.stringify(buildGeneratePayload(data, payload)),
     });
 
     const result = await response.json();
@@ -719,11 +887,7 @@ async function generatePDFByDisplayOrder() {
     const response = await fetch(`${API_BASE_URL}/generate/pdf/by-display-order`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({
-        templateBase64,
-        data,
-        ...payload,
-      }),
+      body: JSON.stringify(buildGeneratePayload(data, payload)),
     });
 
     const result = await response.json();

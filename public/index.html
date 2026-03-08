@@ -23,11 +23,11 @@
     <!-- Section 1: Template Upload -->
     <section class="card">
       <h2>📁 Step 1: Upload Template</h2>
-      <div class="upload-area">
+      <div id="template-upload-area" class="upload-area drop-zone">
         <input type="file" id="templateFile" accept=".xlsx" />
         <label for="templateFile" class="file-label">
           <span class="file-icon">📄</span>
-          <span class="file-text">Choose Excel Template (.xlsx)</span>
+          <span class="file-text">Choose Excel Template (.xlsx) or Drop It Here</span>
         </label>
         <div id="file-info" class="file-info"></div>
       </div>
@@ -64,9 +64,24 @@
       <button id="useSampleData" class="btn btn-small">Use Sample Data</button>
     </section>
 
-    <!-- Section 4: Generate Files -->
+    <!-- Section 4: Image Upload -->
     <section class="card">
-      <h2>⚡ Step 4: Generate Files</h2>
+      <h2>🖼️ Step 4: Upload Images</h2>
+      <p class="hint">Upload PNG/JPEG files. The client sends them as `images.{fileNameWithoutExt}` so `youtube.png` becomes `{{%youtube}}`. Uploading again adds more files, and the same key overwrites the previous one.</p>
+      <div id="image-upload-area" class="upload-area drop-zone">
+        <input type="file" id="imageFiles" accept=".png,.jpg,.jpeg,image/png,image/jpeg" multiple />
+        <label for="imageFiles" class="file-label">
+          <span class="file-icon">🖼️</span>
+          <span class="file-text">Choose Image Files (PNG / JPEG) or Drop Them Here</span>
+        </label>
+        <div id="image-info" class="file-info"></div>
+      </div>
+      <div id="image-list" class="asset-list"></div>
+    </section>
+
+    <!-- Section 5: Generate Files -->
+    <section class="card">
+      <h2>⚡ Step 5: Generate Files</h2>
       <div class="sheet-selector">
         <div class="sheet-selector-header">
           <label class="sheet-selector-label">Sheet (optional)</label>
